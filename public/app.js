@@ -2,25 +2,23 @@ const form = document.getElementById("todo-form");
 const input = document.getElementById("todo-input");
 const list = document.getElementById("todo-list");
 
-let todos = JSON.parse(localStorage.getItem("todos") || "[]");
-
-function saveTodos() {
-  localStorage.setItem("todos", JSON.stringify(todos));
+async function fetchTodos() {
+  const res = await fetch("/api/todos");
+  return res.json();
 }
 
-function renderTodos() {
+function renderTodos(todos) {
   list.innerHTML = "";
-  todos.forEach((todo, i) => {
+  todos.forEach((todo) => {
     const li = document.createElement("li");
     if (todo.done) li.classList.add("done");
 
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.checked = todo.done;
-    checkbox.addEventListener("change", () => {
-      todos[i].done = !todos[i].done;
-      saveTodos();
-      renderTodos();
+    checkbox.addEventListener("change", async () => {
+      await fetch(`/api/todos/${todo._id}`, { method: "PATCH" });
+      renderTodos(await fetchTodos());
     });
 
     const span = document.createElement("span");
@@ -29,10 +27,9 @@ function renderTodos() {
     const deleteBtn = document.createElement("button");
     deleteBtn.textContent = "Delete";
     deleteBtn.className = "delete-btn";
-    deleteBtn.addEventListener("click", () => {
-      todos.splice(i, 1);
-      saveTodos();
-      renderTodos();
+    deleteBtn.addEventListener("click", async () => {
+      await fetch(`/api/todos/${todo._id}`, { method: "DELETE" });
+      renderTodos(await fetchTodos());
     });
 
     li.append(checkbox, span, deleteBtn);
@@ -40,14 +37,17 @@ function renderTodos() {
   });
 }
 
-form.addEventListener("submit", (e) => {
+form.addEventListener("submit", async (e) => {
   e.preventDefault();
   const text = input.value.trim();
   if (!text) return;
-  todos.push({ text, done: false });
-  saveTodos();
-  renderTodos();
+  await fetch("/api/todos", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  });
   input.value = "";
+  renderTodos(await fetchTodos());
 });
 
-renderTodos();
+fetchTodos().then(renderTodos);
